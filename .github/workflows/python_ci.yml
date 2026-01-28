@@ -1,4 +1,4 @@
-name: Python CI
+name: Python CI-CD with Package Job
 
 on:
   push:
@@ -27,7 +27,15 @@ jobs:
       - name: Run tests
         run: pytest
 
-      - name: Build Artifact
+  package:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build package
         run: |
           mkdir build
           cp app1.py requirements.txt build/
@@ -38,3 +46,37 @@ jobs:
         with:
           name: app-artifact
           path: app.tar.gz
+
+  deploy-dev:
+    runs-on: ubuntu-latest
+    needs: package
+    environment: dev
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-artifact
+
+      - name: Deploy to Dev
+        run: |
+          echo "Deploying to DEV server"
+          mkdir dev-release
+          tar -xzf app.tar.gz -C dev-release
+
+  deploy-prod:
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    environment: prod
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-artifact
+
+      - name: Deploy to PROD
+        run: |
+          echo "Deploying to PRODUCTION server"
+          mkdir prod-release
+          tar -xzf app.tar.gz -C prod-release
